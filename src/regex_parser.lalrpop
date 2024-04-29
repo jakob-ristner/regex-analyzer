@@ -54,11 +54,11 @@ CharRange: Vec<char> = {
 
 EscChar: char = {
     Char => <>.into(),
-    "\\" <s:SpecialChar> => s,
+    //"\\" <s:SpecialChar> => s,
 };
 
 Char: char = {
-    r"[^\.\*\+\?\|\(\)\[\]\\\\]" => <>.chars().next().unwrap(),
+    r"[A-z]" => <>.chars().next().unwrap(),
 };
 
 

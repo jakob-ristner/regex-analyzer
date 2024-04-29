@@ -11,5 +11,6 @@ fn main() {
     vec.extend(range);
     let a: &str = "(ab)? b* [a-d]+ ";
     let re = regex_parser::RegexParser::new().parse(a).unwrap();
+    dbg!(&re);
     test();
 }
