@@ -1,0 +1,89 @@
+use std::str::FromStr;
+use crate::regex_ast::*;
+
+grammar;
+
+
+
+pub Regex: Box<RegexAst> = {
+    Concatenation,
+    <c:Concatenation> "|" <r:Regex> => Box::new(RegexAst::Or(c, r)),
+};
+
+pub Concatenation: Box<RegexAst> = {
+    Repetition,
+    Concatenation Repetition => Box::new(RegexAst::Concat(<>)),
+};
+
+Repetition: Box<RegexAst> = {
+    Term,
+    "$" => Box::new(RegexAst::EOL),
+    "^" => Box::new(RegexAst::BOL),
+    <a:Term> "*" => Box::new(RegexAst::Star(a)),
+    <a:Term> "+" => Box::new(RegexAst::Concat(Box::new(RegexAst::Star(a.clone())), a)),
+    <a:Term> "?" => Box::new(RegexAst::Or(Box::new(RegexAst::Epsilon), a)),
+};
+
+Term: Box<RegexAst> = {
+    Atom,
+    CharClass,
+    "(" <r:Regex> ")" => r,
+};
+
+Atom: Box<RegexAst> = {
+    EscChar => Box::new(RegexAst::Literal(<>.into())),
+    "." => Box::new(RegexAst::Any),
+};
+
+CharClass: Box<RegexAst> = {
+    "[" <c:CharSet> "]" => Box::new(RegexAst::CharClass(c)),
+    "[" "^" <c:CharSet> "]" => Box::new(RegexAst::CharClass(c.complement())),
+};
+
+CharSet: CharSet = {
+    EscChar => CharSet {complement: false, chars: vec![<>]},
+    <mut s:CharSet> <c:EscChar> => {
+        s.add(c);
+        s
+    },
+    CharRange,
+};
+
+CharRange: CharSet = {
+    <a:EscChar> "-" <b:EscChar> => {
+        let mut s = CharSet {complement: false, chars: vec![]};
+        s.add_range(a, b);
+        s
+    }
+};
+
+
+
+EscChar: char = {
+    Char => <>.into(),
+    "\\" <s:SpecialChar> => s,
+};
+
+Char: char = {
+    r"[^\.\*\+\?\|\(\)\[\]\\\\|\^|\$]" => <>.chars().next().unwrap(),
+};
+
+
+SpecialChar: char = {
+    "." => '.',
+    "*" => '*',
+    "+" => '+',
+    "?" => '?',
+    "|" => '|',
+    "(" => '(',
+    ")" => ')',
+    "[" => '[',
+    "]" => ']',
+    "\\" => '\\',
+    "$" => '$',
+    "^" => '^',
+};
+
+
+
+
