@@ -1,5 +1,7 @@
+use crate::{nfa, regex_ast};
 use crate::regex_ast::RegexAst;
-use std::cell::RefCell;
+use std::cell::{Ref, RefCell};
+use std::os::linux::raw::stat;
 use std::rc::Rc;
 use std::sync::atomic::AtomicUsize;
 
@@ -33,8 +35,8 @@ impl State {
         }))
     }
 
-    pub fn add_trans(&mut self, symbol: Vec<char>, next_state: RefState) {
-        self.transitions.push(Transition { symbol, next_state });
+    pub fn add_trans(&mut self, symbol: Vec<char>, next_state: &RefState) {
+        self.transitions.push(Transition { symbol, next_state: next_state.clone()});
     }
 }
 
@@ -42,6 +44,8 @@ impl NFA {
     pub fn new(start: RefState) -> NFA {
         NFA { start }
     }
+    
+    
 
     fn epsilon_closure(&self, current_states: &mut Vec<RefState>) {
         let mut i = 0;
@@ -86,10 +90,62 @@ impl NFA {
     }
 }
 
-fn Convert(re: RegexAst) -> (RefState, RefState) {
-    todo!();
-}
+fn convert(re: RegexAst) -> (RefState, RefState) {
+    let start = State::new(false);
+    let end = State::new(false);
 
+    match re {
+        RegexAst::Epsilon => {
+            start.borrow_mut().add_trans(Vec::new(),&end);
+            return (start, end)
+        }
+        RegexAst::Any => {
+            return (start, end)
+        }
+        RegexAst::CharClass(boolean_value, char_vec) => {
+            let c1: Rc<RefCell<State>>= State::new(false);
+            let c2: Rc<RefCell<State>>= State::new(false);
+            start.borrow_mut().add_trans(Vec::new(), &c1);
+            c1.borrow_mut().add_trans(char_vec, &c2);
+            return (start, c2)
+            
+        }
+        RegexAst::Literal(character) => {
+            let c1: Rc<RefCell<State>>= State::new(false);
+            let c2: Rc<RefCell<State>>= State::new(false);
+            start.borrow_mut().add_trans(Vec::new(), &c1);
+            c1.borrow_mut().add_trans( vec![character], &c2);
+            return (start, c2)
+        }
+        RegexAst::Concat(reg1, reg2) => {
+            let (state11, state12) = convert(*reg1);
+            let (state21, state22) = convert(*reg2);
+            start.borrow_mut().add_trans(Vec::new(), &state11);
+            state12.borrow_mut().add_trans(Vec::new(), &state21); 
+            state22.borrow_mut().add_trans(Vec::new(), &end);
+            return (start, end)  
+                 
+        }
+        RegexAst::Or(reg1, reg2) => {
+            let (state11, state12) = convert(*reg1);
+            let (state21, state22) = convert(*reg2);
+            start.borrow_mut().add_trans(Vec::new(), &state11);
+            start.borrow_mut().add_trans(Vec::new(), &state21); 
+            state12.borrow_mut().add_trans(Vec::new(), &end);
+            state22.borrow_mut().add_trans(Vec::new(), &end);
+            return (start, end)   
+        }
+        RegexAst::Star(reg) => {
+            let (state11, state12) = convert(*reg);
+            start.borrow_mut().add_trans(Vec::new(), &state11);
+            state11.borrow_mut().add_trans(Vec::new(), &state12);
+            state12.borrow_mut().add_trans(Vec::new(), &state11);
+            state12.borrow_mut().add_trans(Vec::new(), &end);
+            return (start, end)
+        }
+        
+    }
+}
 pub fn test() {
     // create simple NFA
 
@@ -97,11 +153,9 @@ pub fn test() {
     let state2 = State::new(false);
     let state3 = State::new(true);
 
-    state1.borrow_mut().add_trans(vec!['a'], state2.clone());
-    state2.borrow_mut().add_trans(vec![], state3.clone());
-    state3.borrow_mut().add_trans(vec![], state2.clone());
-
+    state1.borrow_mut().add_trans(vec!['a'], &state2);
+    state2.borrow_mut().add_trans(vec![], &state3);
+    state3.borrow_mut().add_trans(vec![], &state2);
     let nfa = NFA::new(state1);
     let x = nfa.run("a");
-    println!("{}", x);
 }

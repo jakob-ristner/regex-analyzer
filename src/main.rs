@@ -1,5 +1,7 @@
 mod nfa;
 mod regex_ast;
+use std::convert;
+
 use lalrpop_util::lalrpop_mod;
 use nfa::*;
 
