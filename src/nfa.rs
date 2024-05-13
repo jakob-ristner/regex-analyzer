@@ -1,7 +1,5 @@
 use crate::regex_ast::RegexAst;
-use crate::{nfa, regex_ast};
-use std::cell::{Ref, RefCell};
-use std::os::linux::raw::stat;
+use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::atomic::AtomicUsize;
 
@@ -35,7 +33,7 @@ impl State {
         }))
     }
 
-    pub fn add_trans(&mut self, symbol: Vec<char>, next_state: &RefState) {
+    pub fn add_transition(&mut self, symbol: Vec<char>, next_state: &RefState) {
         self.transitions.push(Transition {
             symbol,
             next_state: next_state.clone(),
@@ -91,8 +89,8 @@ impl NFA {
     }
 }
 
-pub fn createNfa(re: &RegexAst) -> NFA {
-    let (start, mut end) = convert(re.clone());
+pub fn create_nfa(re: &RegexAst) -> NFA {
+    let (start, end) = convert(re.clone());
     end.borrow_mut().accepting = true;
     NFA::new(start)
 }
@@ -104,61 +102,63 @@ fn convert(re: RegexAst) -> (RefState, RefState) {
 
     match re {
         RegexAst::Epsilon => {
-            start.borrow_mut().add_trans(Vec::new(), &end);
+            start.borrow_mut().add_transition(Vec::new(), &end);
             return (start, end);
         }
-        RegexAst::Any => return (start, end),
-        RegexAst::CharClass(boolean_value, char_vec) => {
+        RegexAst::Any => {
             let c1: RefState = State::new(false);
             let c2: RefState = State::new(false);
-            start.borrow_mut().add_trans(Vec::new(), &c1);
-            c1.borrow_mut().add_trans(char_vec, &c2);
+            start.borrow_mut().add_transition(Vec::new(), &c1);
+            c1.borrow_mut().add_transition(RegexAst::alphabet(), &c2);
+            return (start, c2);
+        }
+        RegexAst::CharClass(_boolean_value, char_vec) => {
+            let characters = if _boolean_value {
+                char_vec
+            } else {
+                RegexAst::alphabet()
+                    .into_iter()
+                    .filter(|c| !char_vec.contains(c))
+                    .collect()
+            };
+
+            let c1: RefState = State::new(false);
+            let c2: RefState = State::new(false);
+            start.borrow_mut().add_transition(Vec::new(), &c1);
+            c1.borrow_mut().add_transition(characters, &c2);
             return (start, c2);
         }
         RegexAst::Literal(character) => {
             let c1: RefState = State::new(false);
             let c2: RefState = State::new(false);
-            start.borrow_mut().add_trans(Vec::new(), &c1);
-            c1.borrow_mut().add_trans(vec![character], &c2);
+            start.borrow_mut().add_transition(Vec::new(), &c1);
+            c1.borrow_mut().add_transition(vec![character], &c2);
             return (start, c2);
         }
         RegexAst::Concat(reg1, reg2) => {
             let (state11, state12) = convert(*reg1);
             let (state21, state22) = convert(*reg2);
-            start.borrow_mut().add_trans(Vec::new(), &state11);
-            state12.borrow_mut().add_trans(Vec::new(), &state21);
-            state22.borrow_mut().add_trans(Vec::new(), &end);
+            start.borrow_mut().add_transition(Vec::new(), &state11);
+            state12.borrow_mut().add_transition(Vec::new(), &state21);
+            state22.borrow_mut().add_transition(Vec::new(), &end);
             return (start, end);
         }
         RegexAst::Or(reg1, reg2) => {
             let (state11, state12) = convert(*reg1);
             let (state21, state22) = convert(*reg2);
-            start.borrow_mut().add_trans(Vec::new(), &state11);
-            start.borrow_mut().add_trans(Vec::new(), &state21);
-            state12.borrow_mut().add_trans(Vec::new(), &end);
-            state22.borrow_mut().add_trans(Vec::new(), &end);
+            start.borrow_mut().add_transition(Vec::new(), &state11);
+            start.borrow_mut().add_transition(Vec::new(), &state21);
+            state12.borrow_mut().add_transition(Vec::new(), &end);
+            state22.borrow_mut().add_transition(Vec::new(), &end);
             return (start, end);
         }
         RegexAst::Star(reg) => {
             let (state11, state12) = convert(*reg);
-            start.borrow_mut().add_trans(Vec::new(), &state11);
-            state11.borrow_mut().add_trans(Vec::new(), &state12);
-            state12.borrow_mut().add_trans(Vec::new(), &state11);
-            state12.borrow_mut().add_trans(Vec::new(), &end);
+            start.borrow_mut().add_transition(Vec::new(), &state11);
+            state11.borrow_mut().add_transition(Vec::new(), &state12);
+            state12.borrow_mut().add_transition(Vec::new(), &state11);
+            state12.borrow_mut().add_transition(Vec::new(), &end);
             return (start, end);
         }
     }
-}
-pub fn test() {
-    // create simple NFA
-
-    let state1 = State::new(false);
-    let state2 = State::new(false);
-    let state3 = State::new(true);
-
-    state1.borrow_mut().add_trans(vec!['a'], &state2);
-    state2.borrow_mut().add_trans(vec![], &state3);
-    state3.borrow_mut().add_trans(vec![], &state2);
-    let nfa = NFA::new(state1);
-    let x = nfa.run("a");
 }

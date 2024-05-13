@@ -8,3 +8,11 @@ pub enum RegexAst {
     Or(Box<RegexAst>, Box<RegexAst>),
     Star(Box<RegexAst>),
 }
+
+impl RegexAst {
+    pub fn alphabet() -> Vec<char> {
+        "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+            .chars()
+            .collect()
+    }
+}
