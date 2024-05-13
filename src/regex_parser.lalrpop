@@ -5,6 +5,7 @@ grammar;
 pub Regex = {
     Concatenation,
     <Concatenation> "|" <Regex> => Box::new(RegexAst::Or(<>)),
+    () => Box::new(RegexAst::Epsilon),
 };
 
 Concatenation = {

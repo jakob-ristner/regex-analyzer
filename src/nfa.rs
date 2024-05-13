@@ -112,14 +112,14 @@ fn convert(re: RegexAst) -> (RefState, RefState) {
             c1.borrow_mut().add_transition(RegexAst::alphabet(), &c2);
             return (start, c2);
         }
-        RegexAst::CharClass(_boolean_value, char_vec) => {
-            let characters = if _boolean_value {
-                char_vec
-            } else {
+        RegexAst::CharClass(is_complement, char_vec) => {
+            let characters = if is_complement {
                 RegexAst::alphabet()
                     .into_iter()
                     .filter(|c| !char_vec.contains(c))
                     .collect()
+            } else {
+                char_vec
             };
 
             let c1: RefState = State::new(false);
