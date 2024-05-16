@@ -1,9 +1,57 @@
 use crate::regex_ast::RegexAst;
 use std::cell::RefCell;
+use std::collections::HashMap;
+use std::process::exit;
 use std::rc::Rc;
 use std::sync::atomic::AtomicUsize;
 
 type RefState = Rc<RefCell<State>>;
+
+type InputMap = HashMap<Input, Vec<Loop>>;
+type Input = Vec<char>;
+type Loop = Vec<usize>;
+
+pub fn find_loops(
+    start: RefState,
+    current: RefState,
+    input_map: &mut InputMap,
+    current_loop: Loop,
+    current_input: Input,
+) -> InputMap {
+    for tran in &current.borrow().transitions {
+        if current_loop.contains(&tran.id) {
+            continue;
+        }
+
+        let mut new_loop = current_loop.clone();
+        new_loop.push(tran.id);
+
+        if tran.next_state == start {
+            for sym in &tran.symbol {
+                let mut new_input = current_input.clone();
+                new_input.push(*sym);
+                input_map
+                    .entry(new_input.clone())
+                    .or_insert(Vec::new())
+                    .push(new_loop.clone());
+            }
+        }
+
+        for sym in &tran.symbol {
+            let mut new_input = current_input.clone();
+            new_input.push(*sym);
+            find_loops(
+                start.clone(),
+                tran.next_state.clone(),
+                input_map,
+                new_loop.clone(),
+                new_input,
+            );
+        }
+    }
+
+    return input_map.clone();
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct State {
@@ -14,13 +62,14 @@ pub struct State {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Transition {
+    id: usize,
     symbol: Vec<char>,
     next_state: RefState,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct NFA {
-    start: RefState,
+    pub start: RefState,
 }
 
 impl State {
@@ -34,7 +83,9 @@ impl State {
     }
 
     pub fn add_transition(&mut self, symbol: Vec<char>, next_state: &RefState) {
+        static ID: AtomicUsize = AtomicUsize::new(0);
         self.transitions.push(Transition {
+            id: ID.fetch_add(1, std::sync::atomic::Ordering::SeqCst),
             symbol,
             next_state: next_state.clone(),
         });
