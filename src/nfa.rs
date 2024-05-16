@@ -1,12 +1,12 @@
 use crate::regex_ast::RegexAst;
 use std::cell::RefCell;
 use std::collections::HashMap;
-use std::process::exit;
 use std::rc::Rc;
 use std::sync::atomic::AtomicUsize;
 
 type RefState = Rc<RefCell<State>>;
 
+type LoopMap = HashMap<usize, InputMap>;
 type InputMap = HashMap<Input, Vec<Loop>>;
 type Input = Vec<char>;
 type Loop = Vec<usize>;
@@ -35,6 +35,17 @@ pub fn find_loops(
                     .or_insert(Vec::new())
                     .push(new_loop.clone());
             }
+        }
+
+        // Epsilon transition
+        if tran.symbol.is_empty() {
+            find_loops(
+                start.clone(),
+                tran.next_state.clone(),
+                input_map,
+                new_loop.clone(),
+                current_input.clone(),
+            );
         }
 
         for sym in &tran.symbol {
@@ -95,6 +106,39 @@ impl State {
 impl NFA {
     pub fn new(start: RefState) -> NFA {
         NFA { start }
+    }
+
+    pub fn get_states(&self) -> Vec<RefState> {
+        let mut states = vec![self.start.clone()];
+        let mut i = 0;
+        while i < states.len() {
+            let current_state = states[i].clone();
+            for tran in &current_state.borrow().transitions {
+                if !states.contains(&tran.next_state) {
+                    states.push(tran.next_state.clone());
+                }
+            }
+            i += 1;
+        }
+        return states.clone();
+    }
+
+    pub fn all_loops(&self) -> LoopMap {
+        let mut loop_map = HashMap::new();
+        let states = self.get_states();
+        for state in &states {
+            loop_map.insert(
+                state.borrow().id,
+                find_loops(
+                    state.clone(),
+                    state.clone(),
+                    &mut HashMap::new(),
+                    Vec::new(),
+                    Vec::new(),
+                ),
+            );
+        }
+        loop_map
     }
 
     fn epsilon_closure(&self, current_states: &mut Vec<RefState>) {

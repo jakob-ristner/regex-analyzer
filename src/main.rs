@@ -2,43 +2,34 @@ mod nfa;
 mod regex_ast;
 use lalrpop_util::lalrpop_mod;
 use nfa::*;
-use std::collections::HashMap;
+use std::{collections::HashMap, env::join_paths};
 
 lalrpop_mod!(pub regex_parser, "/regex_parser.rs");
 
 fn main() {
-    let a: &str = r"";
-    let re = regex_parser::RegexParser::new().parse(a).unwrap();
-    dbg!(&re);
+    check_ambig(&nfa_from_string("((a*)*)+"));
+}
 
-    let test_state = State::new(false);
-    let test_state2 = State::new(false);
-    let test_state3 = State::new(false);
+fn check_ambig(nfa: &NFA) -> bool {
+    let mut exp = false;
 
-    test_state
-        .borrow_mut()
-        .add_transition(vec!['a'], &test_state2);
-
-    test_state2
-        .borrow_mut()
-        .add_transition(vec!['a'], &test_state);
-
-    test_state
-        .borrow_mut()
-        .add_transition(vec!['a'], &test_state3);
-
-    test_state3
-        .borrow_mut()
-        .add_transition(vec!['a'], &test_state);
-
-    let loops = find_loops(
-        test_state.clone(),
-        test_state.clone(),
-        &mut HashMap::new(),
-        Vec::new(),
-        Vec::new(),
-    );
-    dbg!(loops);
+    for (state, input_loops) in nfa.all_loops() {
+        for (input, cycle) in input_loops {
+            if cycle.len() > 1 {
+                println!(
+                    "Cycle of length {} found for sub-input {:?} in state {}",
+                    cycle.len(),
+                    input,
+                    state,
+                );
+                exp = true;
+            }
+        }
+    }
+    if exp {
+        println!("Potential expontential ambiguity found.");
+    }
+    exp
 }
 
 #[test]
