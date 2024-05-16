@@ -6,11 +6,11 @@ use nfa::*;
 lalrpop_mod!(pub regex_parser, "/regex_parser.rs");
 
 fn main() {
-    let a: &str = r"[a-v]";
+    let a: &str = r"(((a*)*)*)*";
     let re = regex_parser::RegexParser::new().parse(a).unwrap();
     dbg!(&re);
     let nfa = create_nfa(&re);
-    dbg!(&nfa.run(""));
+    dbg!(&nfa.run("b"));
 }
 
 #[test]

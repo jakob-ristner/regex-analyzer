@@ -27,7 +27,7 @@ Term = {
 };
 
 Atom: Box<RegexAst> = {
-    EscChar => Box::new(RegexAst::Literal(<>)),
+    Char => Box::new(RegexAst::Literal(<>)),
     "." => Box::new(RegexAst::Any),
 };
 
@@ -36,9 +36,11 @@ CharClass: Box<RegexAst> = {
     "[" "^" <CharSet> "]" => Box::new(RegexAst::CharClass(true, <>)),
 };
 
+
+
 CharSet = {
-    EscChar => vec![<>],
-    <mut vec:CharSet> <a:EscChar> => {
+    Char => vec![<>],
+    <mut vec:CharSet> <a:Char> => {
         vec.push(a);
         vec
     },
@@ -50,34 +52,28 @@ CharSet = {
 };
 
 CharRange: Vec<char> = {
-    <a:EscChar> "-" <b:EscChar> => (a..=b).collect(),
+    <a:Char> "-" <b:Char> => (a..=b).collect(),
 };
 
-EscChar: char = {
-    Char => <>.into(),
-    //"\\" <s:SpecialChar> => s,
-};
 
 Char: char = {
     r"[A-z]" => <>.chars().next().unwrap(),
 };
 
 
-/*
-SpecialChar: char = {
-    "." => '.',
-    "*" => '*',
-    "+" => '+',
-    "?" => '?',
-    "|" => '|',
-    "(" => '(',
-    ")" => ')',
-    "[" => '[',
-    "]" => ']',
-    "\\" => '\\',
-    "n" => '\n',
-};
-*/
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
