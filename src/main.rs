@@ -3,21 +3,25 @@ mod regex_ast;
 use anyhow::Result;
 use lalrpop_util::lalrpop_mod;
 use nfa::*;
+use std::collections::HashMap;
 use std::env;
 use thiserror::Error;
 
 lalrpop_mod!(pub regex_parser, "/regex_parser.rs");
 
 fn main() {
-    let re = "(b|b)*";
-    let nfa = nfa_from_string(&re).unwrap();
-    println!("{}", nfa);
+    if let Some(arg) = env::args().nth(1) {
+        let nfa = nfa_from_string(&arg).unwrap();
+        println!("{}", nfa);
+        check_ambig(&nfa);
+    } else {
+        println!("usage: regex_analyzer <regex>");
+    }
 }
 
 fn check_ambig(nfa: &NFA) -> bool {
     let mut exp = false;
 
-    dbg!(nfa.all_loops());
     for (state, input_loops) in nfa.all_loops() {
         for (input, cycle) in input_loops {
             if cycle.len() > 1 {

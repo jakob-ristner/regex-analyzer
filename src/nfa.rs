@@ -30,6 +30,12 @@ pub fn find_loops(
         new_loop.push(tran.id);
 
         if tran.next_state == start {
+            if tran.symbol.is_empty() {
+                input_map
+                    .entry(current_input.clone())
+                    .or_insert(Vec::new())
+                    .push(new_loop.clone());
+            }
             for sym in &tran.symbol {
                 let mut new_input = current_input.clone();
                 new_input.push(*sym);
@@ -200,7 +206,7 @@ impl fmt::Display for NFA {
             for tran in &state.borrow().transitions {
                 write!(
                     f,
-                    "{} -- {:?} --> {}\n",
+                    "{} -- {:?} --{}-> {}\n",
                     if state.borrow().accepting {
                         state.borrow().id.to_string().green()
                     } else if state == self.start {
@@ -209,6 +215,7 @@ impl fmt::Display for NFA {
                         state.borrow().id.to_string().white()
                     },
                     tran.symbol,
+                    tran.id,
                     // tran.next_state.borrow().id
                     if tran.next_state.borrow().accepting {
                         tran.next_state.borrow().id.to_string().green()
