@@ -9,6 +9,7 @@ edition = "2021"
 anyhow = "1.0.82"
 thiserror = "1.0.59"
 lalrpop-util = { version = "0.20.2", features = ["lexer", "unicode"] }
+colored = "2.1.0"
 
 [build-dependencies] # <-- We added this and everything after!
 lalrpop = "0.20.2"

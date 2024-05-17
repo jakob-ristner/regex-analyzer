@@ -198,23 +198,17 @@ impl fmt::Display for NFA {
             }
             visited.insert(state.borrow().id);
             for tran in &state.borrow().transitions {
+                let c_id = "0";
                 write!(
                     f,
                     "{} -- {:?} --> {}\n",
                     if state.borrow().accepting {
                         state.borrow().id.to_string().green()
-                    } else if state == self.start {
-                        state.borrow().id.to_string().red()
                     } else {
-                        state.borrow().id.to_string().white()
+                        state.borrow().id.to_string()
                     },
                     tran.symbol,
-                    // tran.next_state.borrow().id
-                    if tran.next_state.borrow().accepting {
-                        tran.next_state.borrow().id.to_string().green()
-                    } else {
-                        tran.next_state.borrow().id.to_string().white()
-                    }
+                    tran.next_state.borrow().id
                 )?;
                 queue.push_back(tran.next_state.clone());
             }
