@@ -1,6 +1,7 @@
 use crate::regex_ast::RegexAst;
 use std::cell::RefCell;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet, VecDeque};
+use std::fmt;
 use std::rc::Rc;
 use std::sync::atomic::AtomicUsize;
 
@@ -78,7 +79,7 @@ pub struct Transition {
     next_state: RefState,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct NFA {
     pub start: RefState,
 }
@@ -181,6 +182,31 @@ impl NFA {
         }
         self.epsilon_closure(&mut current_states);
         current_states.iter().any(|state| state.borrow().accepting)
+    }
+}
+
+impl fmt::Display for NFA {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut visited = HashSet::new();
+        let mut queue = VecDeque::new();
+        queue.push_back(self.start.clone());
+        while let Some(state) = queue.pop_front() {
+            if visited.contains(&state.borrow().id) {
+                continue;
+            }
+            visited.insert(state.borrow().id);
+            for tran in &state.borrow().transitions {
+                write!(
+                    f,
+                    "{} -- {:?} --> {}\n",
+                    state.borrow().id,
+                    tran.symbol,
+                    tran.next_state.borrow().id
+                )?;
+                queue.push_back(tran.next_state.clone());
+            }
+        }
+        Ok(())
     }
 }
 
